@@ -9,6 +9,6 @@ const router = express.Router();
 router.use(memberRoutes);
 router.use(chatRoutes);
 router.use(paymentRoutes);
-router.use("/api/bkash", bkashRoutes);
+router.use(bkashRoutes);
 
 module.exports = router;

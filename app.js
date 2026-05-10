@@ -18,7 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(routes);
 
 app.get("/", (req, res) => {
-  res.send("Reunion Server is Running!!");
+  res.send("Workshop Server is Running!!");
 });
 
 app.listen(port, () => {
