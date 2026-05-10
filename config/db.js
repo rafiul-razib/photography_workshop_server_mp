@@ -18,4 +18,18 @@ function getBkashTokenCollection() {
   return client.db("photographyWorkshopDB").collection("bkashTokens");
 }
 
-module.exports = { client, getMembersCollection, getBkashTokenCollection };
+function getChatSessionsCollection() {
+  return client.db("photographyWorkshopDB").collection("chatSessions");
+}
+
+function getParticipantCountersCollection() {
+  return client.db("photographyWorkshopDB").collection("participantCounters");
+}
+
+module.exports = {
+  client,
+  getMembersCollection,
+  getBkashTokenCollection,
+  getChatSessionsCollection,
+  getParticipantCountersCollection,
+};

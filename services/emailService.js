@@ -8,7 +8,17 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-async function sendConfirmationEmail(toEmail, name, tranId, qrImageURL) {
+async function sendConfirmationEmail(
+  toEmail,
+  name,
+  tranId,
+  qrImageURL,
+  participantId,
+) {
+  const participantLine = participantId
+    ? `<p style="margin: 8px 0 0; color: #222;"><strong>Participant ID:</strong> ${participantId}</p>`
+    : "";
+
   return transporter.sendMail({
     from: `FrameX Workshop <${process.env.EMAIL_USER}>`,
     to: toEmail,
@@ -33,6 +43,7 @@ async function sendConfirmationEmail(toEmail, name, tranId, qrImageURL) {
           <p style="margin: 0; color: #222;">
             <strong>Transaction ID:</strong> ${tranId}
           </p>
+          ${participantLine}
         </div>
 
         <p style="color: #444; line-height: 1.7;">

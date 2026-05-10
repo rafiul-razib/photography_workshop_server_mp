@@ -5,13 +5,14 @@ async function findAllMembers() {
   return col.find().toArray();
 }
 
-async function insertPendingMember(payload, tranId, amount) {
+async function insertPendingMember(payload, tranId, amount, extra = {}) {
   const col = getMembersCollection();
   const finalOrder = {
     ...payload,
     totalAmount: amount,
     paymentStatus: false,
     transactionId: tranId,
+    ...extra,
   };
   const result = await col.insertOne(finalOrder);
   console.log("Inserted →", result.insertedId);

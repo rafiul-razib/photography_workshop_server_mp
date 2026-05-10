@@ -8,6 +8,9 @@ const { FRONTEND_BASE_URL } = require("../config/constants");
 const memberService = require("../services/memberService");
 const paymentService = require("../services/paymentService");
 const { sendConfirmationEmail } = require("../services/emailService");
+const {
+  ensureParticipantIdForTransaction,
+} = require("../services/participantIdService");
 
 async function createBkashPayment(req, res) {
   try {
@@ -108,7 +111,7 @@ async function bkashPaymentCallback(req, res) {
       return failRedirect();
     }
 
-    const user = await memberService.findMemberByTransactionId(orderId);
+    const { user } = await ensureParticipantIdForTransaction(orderId);
     const qrImageURL = await paymentService.createVerifyQrDataUrl(
       FRONTEND_BASE_URL,
       orderId,
@@ -119,6 +122,7 @@ async function bkashPaymentCallback(req, res) {
         user.fullName,
         orderId,
         qrImageURL,
+        user.participantId,
       );
     }
 

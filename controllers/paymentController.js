@@ -9,13 +9,22 @@ const {
   createPayment,
   isCreatePaymentSuccess,
 } = require("../services/bkashServices");
+const {
+  interestToPrefix,
+  issueNextParticipantId,
+} = require("../services/participantIdService");
 
 async function register(req, res) {
   const tranId = new ObjectId().toString();
   const payload = req.body;
 
   try {
-    await memberService.insertPendingMember(payload, tranId, REGISTRATION_AMOUNT);
+    const prefix = interestToPrefix(payload);
+    const participantId = await issueNextParticipantId(prefix);
+
+    await memberService.insertPendingMember(payload, tranId, REGISTRATION_AMOUNT, {
+      participantId,
+    });
 
     const callbackURL = `${SERVER_BASE_URL}/api/bkash/callback?orderId=${encodeURIComponent(tranId)}`;
     const reference = String(payload.phone || payload.email || "1").replace(
@@ -42,7 +51,11 @@ async function register(req, res) {
       await memberService.setBkashPaymentPending(tranId, bkashRes.paymentID);
     }
 
-    return res.send({ url: bkashRes.bkashURL });
+    return res.send({
+      url: bkashRes.bkashURL,
+      transactionId: tranId,
+      participantId,
+    });
   } catch (error) {
     console.error("Register error →", error);
     await memberService.deleteMemberByTransactionId(tranId).catch(() => {});
