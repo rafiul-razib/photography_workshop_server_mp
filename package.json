@@ -2,10 +2,10 @@
   "name": "reunion-cpscm-server",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "node app.js"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +13,7 @@
   "type": "commonjs",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "axios": "^1.16.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
@@ -20,6 +21,6 @@
     "nodemailer": "^7.0.11",
     "nodemon": "^3.1.11",
     "qrcode": "^1.5.4",
-    "sslcommerz-lts": "^1.2.0"
+    "uuid": "^11.1.1"
   }
 }
