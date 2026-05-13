@@ -1,84 +1,52 @@
 const { randomUUID } = require("crypto");
-const { ai } = require("../config/gemini");
 const { getChatSessionsCollection } = require("../config/db");
+const buildPrompt = require("../utils/buildPrompt");
+const { generateReply } = require("../services/geminiServices");
+const { normalizeSessionId } = require("../utils/chatMessageUtils");
 
-const MAX_CONTEXT_MESSAGES = 12;
-const MAX_STORED_MESSAGES = 50;
-
-const SYSTEM_PROMPT = `
-You are an AI-powered Event Assistant for the Photography & Cinematography Workshop.
-
-Workshop Overview:
-- Event Name: Photography & Cinematography Masterclass 2026
-- Date: 6th June 2026
-- Venue: BAU Convention center
-- Organized by: BAU Creative Media Club
-- Registration Fee: 1250 BDT per participant
-- Early registration is recommended due to limited seats.
-
-Workshop Sessions:
-- Registration & Welcome Coffee: 9:00 AM
-- Opening Session & Introduction: 10:00 AM
-- Photography Fundamentals: 10:30 AM
-- Cinematography Techniques & Camera Movement: 12:00 PM
-- Lunch Break: 1:00 PM
-- Outdoor Practical Session & Photo Walk: 2:00 PM
-- Editing & Color Grading Basics: 4:00 PM
-- Closing Session & Certificate Distribution: 6:00 PM
-
-Workshop Rules:
-- Participants should carry their registration confirmation.
-- Bring your own camera or smartphone for practical sessions.
-- Follow campus and workshop guidelines.
-- Respect instructors, crew members, and fellow participants.
-- Maintain professional behavior during shooting sessions.
-
-Your Responsibilities:
-- Answer participant questions about the workshop.
-- Provide schedule, registration, and venue information.
-- Help attendees understand workshop sessions and requirements.
-- Respond politely and professionally.
-- If information is unavailable, clearly state that you do not have that information.
-
-Reply rules:
-- If the user asks in Bangla, reply in Bangla; otherwise reply in English.
-- Keep continuity with prior messages.
-`;
+// How many past messages (user + assistant entries) to include in the prompt
+const MAX_CONTEXT_MESSAGES =
+  Number(process.env.CHAT_MAX_CONTEXT_MESSAGES) || 48;
+// Total messages kept per session in MongoDB (oldest trimmed first)
+const MAX_STORED_MESSAGES =
+  Number(process.env.CHAT_MAX_STORED_MESSAGES) || 200;
+const MAX_USER_CHARS = Number(process.env.CHAT_MAX_USER_CHARS) || 8000;
 
 function formatHistory(messages) {
+  if (!Array.isArray(messages) || !messages.length) {
+    return "(No prior messages)";
+  }
   return messages
-    .map((m) => `${m.role === "assistant" ? "Assistant" : "User"}: ${m.content}`)
+    .map((m) => {
+      const role = m?.role === "assistant" ? "Assistant" : "User";
+      const content = m?.content != null ? String(m.content).trim() : "";
+      return `${role}: ${content || "(empty)"}`;
+    })
     .join("\n");
 }
 
-async function getEventAssistantReply(query, history = []) {
-  const model = ai.getGenerativeModel({
-    model: "gemini-2.5-flash",
-    generationConfig: {
-      temperature: 0.4,
-      topP: 0.9,
-      topK: 40,
-      maxOutputTokens: 512,
-    },
-  });
+function clipQuery(text) {
+  if (text.length <= MAX_USER_CHARS) return text;
+  return `${text.slice(0, MAX_USER_CHARS)}\n…(truncated)`;
+}
 
-  const prompt = `
-${SYSTEM_PROMPT}
-
-Conversation so far:
-${history.length ? formatHistory(history) : "(No prior messages)"}
-
-User: ${query}
-Assistant:
-`;
-
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+async function runAssistant(contextText, query) {
+  const safeQuery = clipQuery(String(query || "").trim());
+  const prompt = buildPrompt(contextText, safeQuery);
+  try {
+    const text = await generateReply(prompt);
+    if (typeof text === "string" && text.trim()) {
+      return text.trim();
+    }
+  } catch (e) {
+    console.error("Gemini generateReply error:", e.message || e);
+  }
+  return "Sorry, I could not generate a reply right now. Please try again in a moment.";
 }
 
 async function ensureSession(sessionId) {
   const col = getChatSessionsCollection();
-  const id = sessionId || randomUUID();
+  const id = normalizeSessionId(sessionId) || randomUUID();
 
   await col.updateOne(
     { _id: id },
@@ -98,8 +66,12 @@ async function ensureSession(sessionId) {
 
 async function getSessionMessages(sessionId) {
   const col = getChatSessionsCollection();
-  const session = await col.findOne({ _id: sessionId }, { projection: { messages: 1 } });
-  return session?.messages || [];
+  const session = await col.findOne(
+    { _id: sessionId },
+    { projection: { messages: 1 } },
+  );
+  const raw = session?.messages;
+  return Array.isArray(raw) ? raw : [];
 }
 
 async function appendConversation(sessionId, userText, assistantText) {
@@ -123,18 +95,21 @@ async function appendConversation(sessionId, userText, assistantText) {
 }
 
 async function getSessionReply(sessionId, userText) {
+  const normalizedId = normalizeSessionId(sessionId);
+
   try {
-    const resolvedSessionId = await ensureSession(sessionId);
+    const resolvedSessionId = await ensureSession(normalizedId);
     const allMessages = await getSessionMessages(resolvedSessionId);
     const history = allMessages.slice(-MAX_CONTEXT_MESSAGES);
-    const reply = await getEventAssistantReply(userText, history);
+    const contextText = formatHistory(history);
+    const reply = await runAssistant(contextText, userText);
     await appendConversation(resolvedSessionId, userText, reply);
     return { sessionId: resolvedSessionId, reply };
   } catch (error) {
-    // Keep chat available even when session storage is temporarily unavailable.
     console.error("Chat session storage error:", error.message || error);
-    const reply = await getEventAssistantReply(userText, []);
-    return { sessionId: sessionId || randomUUID(), reply };
+    const reply = await runAssistant("(No prior messages)", userText);
+    const fallbackSessionId = normalizedId || randomUUID();
+    return { sessionId: fallbackSessionId, reply };
   }
 }
 

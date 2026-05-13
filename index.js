@@ -2,11 +2,11 @@ const express = require("express");
 const QRCode = require("qrcode");
 const SSLCommerzPayment = require("sslcommerz-lts");
 const cors = require("cors");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const app = express();
 require("dotenv").config();
 
-const ai = new GoogleGenerativeAI(process.env.AI_API_KEY);
+const chatService = require("./services/chatService");
+const { extractUserQuery, normalizeSessionId } = require("./utils/chatMessageUtils");
 app.use(
   cors({
     origin: ["http://localhost:3000", "http://localhost:3000"],
@@ -60,60 +60,18 @@ async function run() {
 
     app.post("/chat", async (req, res) => {
       try {
-        const query = req.body?.messages?.[0]?.content;
+        const query = extractUserQuery(req.body);
+        const sessionId = normalizeSessionId(req.body?.sessionId);
 
         if (!query) {
           return res.status(400).json({ error: "Message is required" });
         }
 
-        console.log("User query:", query);
-
-        // ✅ Correct model usage
-        const model = ai.getGenerativeModel({
-          model: "gemini-2.5-flash",
-          generationConfig: {
-            temperature: 0.4, // 👈 main creativity control
-            topP: 0.9,
-            topK: 40,
-            maxOutputTokens: 512,
-          },
-        });
-
-        const prompt = `
-      You are an AI-powered Event Assistant for the CPSCM Reunion Programme.
-
-      Event Overview:
-      - Event Name: CPSCM Grand Reunion 2025
-      - Date: 6th January 2025
-      - Venue: CPSCM Campus
-      - Registration fee: 1700 taka per perticipant. BDT 1000 will be added for each guest. Children under 5 years needs no registration fee.
-
-      Schedule:
-      - Registration & Welcome Tea: 9:00 AM
-      - Opening Ceremony: 10:00 AM
-      - Lunch Break: 1:00 PM
-      - Cultural Program: 2:30 PM
-      - Closing Ceremony: 6:30 PM
-
-      Rules:
-      - Carry registration confirmation
-      - Follow campus rules
-
-      User Question:
-      "${query}"
-
-      Answer politely, clearly, and in a friendly celebratory tone. If the user asks in Bangla, reply in Bangla. Otherwise, reply in English. Maintain the flow of previous reply.
-`;
-
-        const result = await model.generateContent(prompt);
-        const reply = result.response.text();
-
-        res.send({ reply });
-
-        // console.log(reply);
+        const result = await chatService.getSessionReply(sessionId, query);
+        return res.json(result);
       } catch (error) {
-        console.error("Gemini chat error →", error);
-        res.status(500).json({
+        console.error("Chat error →", error);
+        return res.status(500).json({
           reply:
             "Our event assistant is currently unavailable. Please visit the help desk near the main entrance.",
         });
