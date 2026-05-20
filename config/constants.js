@@ -10,7 +10,7 @@ const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
 
 const CORS_ORIGINS = [
   "http://localhost:3000",
-  "https://photography-workshop-client.vercel.app",
+  "https://photography-workshop-client-manual.vercel.app",
 ];
 
 module.exports = {
