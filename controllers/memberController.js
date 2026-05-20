@@ -11,8 +11,8 @@ async function getAllMembers(req, res) {
 }
 
 async function verifyUser(req, res) {
-  const transId = req.params.transactionId;
-  const result = await memberService.findMemberByTransactionId(transId);
+  const identifier = req.params.identifier || req.params.transactionId;
+  const result = await memberService.findMemberByIdentifier(identifier);
   res.send(result);
 }
 

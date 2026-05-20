@@ -6,6 +6,8 @@ const FRONTEND_BASE_URL =
 
 const REGISTRATION_AMOUNT = Number(process.env.REGISTRATION_AMOUNT) || 1250;
 
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
+
 const CORS_ORIGINS = [
   "http://localhost:3000",
   "https://photography-workshop-client.vercel.app",
@@ -16,5 +18,6 @@ module.exports = {
   SERVER_BASE_URL,
   FRONTEND_BASE_URL,
   REGISTRATION_AMOUNT,
+  ADMIN_API_KEY,
   CORS_ORIGINS,
 };

@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const routes = require("./routes");
 const { port, CORS_ORIGINS } = require("./config/constants");
+const { ensureDbIndexes } = require("./config/db");
 
 const app = express();
 
@@ -21,6 +22,13 @@ app.get("/", (req, res) => {
   res.send("Workshop Server is Running!!");
 });
 
-app.listen(port, () => {
-  console.log(`Workshop running on port: ${port}`);
-});
+ensureDbIndexes()
+  .then(() => {
+    app.listen(port, () => {
+      console.log(`Workshop running on port: ${port}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Failed to initialize DB indexes:", error);
+    process.exit(1);
+  });

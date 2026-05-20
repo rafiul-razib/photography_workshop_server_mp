@@ -78,17 +78,6 @@ async function run() {
       }
     });
 
-    app.post("/regbkash", async (req, res) => {
-      try {
-        const tran_id = new ObjectId().toString();
-        const payload = req.body;
-        const amount = 1250;
-        
-      } catch (error) {
-        
-      }
-    })
-
     app.post("/register", async (req, res) => {
       try {
         const tran_id = new ObjectId().toString();

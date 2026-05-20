@@ -1,5 +1,28 @@
 const nodemailer = require("nodemailer");
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getDisplayTransactionId(userOrId) {
+  if (userOrId && typeof userOrId === "object") {
+    return userOrId.bkashTransactionId || userOrId.transactionId || null;
+  }
+  return userOrId || null;
+}
+
+function getTransactionIdLabel(userOrId) {
+  if (userOrId && typeof userOrId === "object" && userOrId.bkashTransactionId) {
+    return "bKash Transaction ID";
+  }
+  return "Transaction ID";
+}
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -11,12 +34,22 @@ const transporter = nodemailer.createTransport({
 async function sendConfirmationEmail(
   toEmail,
   name,
-  tranId,
+  userOrTransactionId,
   qrImageURL,
   participantId,
 ) {
-  const participantLine = participantId
-    ? `<p style="margin: 8px 0 0; color: #222;"><strong>Participant ID:</strong> ${participantId}</p>`
+  const displayTransactionId =
+    getDisplayTransactionId(userOrTransactionId) || "N/A";
+  const transactionLabel = getTransactionIdLabel(userOrTransactionId);
+  const resolvedParticipantId =
+    userOrTransactionId &&
+    typeof userOrTransactionId === "object" &&
+    (userOrTransactionId.participantId || userOrTransactionId.userId)
+      ? userOrTransactionId.participantId || userOrTransactionId.userId
+      : participantId;
+
+  const participantLine = resolvedParticipantId
+    ? `<p style="margin: 8px 0 0; color: #222;"><strong>Participant ID:</strong> ${escapeHtml(resolvedParticipantId)}</p>`
     : "";
 
   return transporter.sendMail({
@@ -28,7 +61,7 @@ async function sendConfirmationEmail(
       <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto;">
 
         <h2 style="color: #111;">
-          Hello ${name},
+          Hello ${escapeHtml(name)},
         </h2>
 
         <p style="color: #444; line-height: 1.7;">
@@ -41,7 +74,7 @@ async function sendConfirmationEmail(
 
         <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0; color: #222;">
-            <strong>Transaction ID:</strong> ${tranId}
+            <strong>${transactionLabel}:</strong> ${escapeHtml(displayTransactionId)}
           </p>
           ${participantLine}
         </div>

@@ -4,6 +4,6 @@ const memberController = require("../controllers/memberController");
 const router = express.Router();
 
 router.get("/allRegisteredMembers", memberController.getAllMembers);
-router.get("/verifyUser/:transactionId", memberController.verifyUser);
+router.get("/verifyUser/:identifier", memberController.verifyUser);
 
 module.exports = router;
